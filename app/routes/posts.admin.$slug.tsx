@@ -1,9 +1,9 @@
 import { ActionArgs, LoaderArgs, json, redirect } from "@remix-run/node";
-import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import invariant from "tiny-invariant";
 import { marked } from "marked";
 
-import { createPost, getPost, updatePost } from "~/models/post.server";
+import { createPost, deletePost, getPost, updatePost } from "~/models/post.server";
 import { requireAdminUser } from "~/session.server";
 
 export const loader = async ({request, params}: LoaderArgs ) => {
@@ -27,6 +27,12 @@ export const action = async ( {request, params}: ActionArgs ) => {
     const title = formData.get("title");
     const slug = formData.get("slug");
     const markdown = formData.get("markdown");
+    const intent = formData.get("intent");
+
+    if (intent === "delete") {
+      await deletePost(params.slug);
+      return redirect("/posts/admin");
+    }
 
     const errors = {
         title: title ? null: "Title is required",
@@ -66,7 +72,7 @@ export default function NewPost() {
     const errors = useActionData<typeof action>();
 
     const navigation = useNavigation();
-    const isCreating = Boolean(
+    const isProcessing = Boolean(
         navigation.state === "submitting"
     );
     const { post, html } = useLoaderData<typeof loader>();
@@ -118,15 +124,27 @@ export default function NewPost() {
           defaultValue={html}
         />
       </p>
-      <p className="text-right">
+      <p className="flex justify-end gap-4">
+        <Link className="py-2 px-4 hover:underline" to="/posts/admin">Cancel</Link>
+      {!isNewPost && (
+          <button
+            type="submit"
+            name="intent"
+            value="delete"
+            className="rounded bg-red-500 py-2 px-4 text-white hover:bg-red-600 focus:bg-red-400 disabled:bg-red-300"
+            disabled={isProcessing}
+          >
+            {isProcessing ? "Deleting..." : "Delete"}
+          </button>
+        )}
         <button
           type="submit"
           className="rounded bg-blue-500 py-2 px-4 text-white hover:bg-blue-600 focus:bg-blue-400 disabled:bg-blue-300"
-          disabled={isCreating}
+          disabled={isProcessing}
         >
           {
-          isNewPost? (isCreating? "Creating..." : "Create Post")
-          : (isCreating? "Updating..." : "Update Post")
+          isNewPost? (isProcessing? "Creating..." : "Create Post")
+          : (isProcessing? "Updating..." : "Update Post")
           
         }
         </button>
