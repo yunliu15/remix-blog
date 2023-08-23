@@ -3,7 +3,7 @@ import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/re
 import invariant from "tiny-invariant";
 import { marked } from "marked";
 
-import { createPost, getPost } from "~/models/post.server";
+import { createPost, getPost, updatePost } from "~/models/post.server";
 import { requireAdminUser } from "~/session.server";
 
 export const loader = async ({request, params}: LoaderArgs ) => {
@@ -20,6 +20,7 @@ export const loader = async ({request, params}: LoaderArgs ) => {
 }
 
 export const action = async ( {request, params}: ActionArgs ) => {
+  invariant(params.slug, "params.slug is required!");
   await requireAdminUser(request);
     const formData = await request.formData();
 
@@ -52,7 +53,7 @@ export const action = async ( {request, params}: ActionArgs ) => {
     if (params.slug === "new") {
       await createPost({title, slug, markdown});
     } else {
-      // todo
+      await updatePost(params.slug, {title, slug, markdown});
     }
 
     return redirect("/posts/admin");
@@ -69,9 +70,10 @@ export default function NewPost() {
         navigation.state === "submitting"
     );
     const { post, html } = useLoaderData<typeof loader>();
+    const isNewPost = !post;
     
   return (
-    <Form method="post">
+    <Form method="post" key={post?.slug || "new"}>
       <p>
         <label>
           Post Title:{" "}
@@ -122,7 +124,11 @@ export default function NewPost() {
           className="rounded bg-blue-500 py-2 px-4 text-white hover:bg-blue-600 focus:bg-blue-400 disabled:bg-blue-300"
           disabled={isCreating}
         >
-          {isCreating? "Creating..." : "Create Post"}
+          {
+          isNewPost? (isCreating? "Creating..." : "Create Post")
+          : (isCreating? "Updating..." : "Update Post")
+          
+        }
         </button>
       </p>
     </Form>
