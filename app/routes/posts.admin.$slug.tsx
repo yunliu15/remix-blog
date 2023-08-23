@@ -1,5 +1,5 @@
 import { ActionArgs, LoaderArgs, json, redirect } from "@remix-run/node";
-import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { Form, Link, isRouteErrorResponse, useActionData, useLoaderData, useNavigation, useRouteError } from "@remix-run/react";
 import invariant from "tiny-invariant";
 import { marked } from "marked";
 
@@ -14,7 +14,9 @@ export const loader = async ({request, params}: LoaderArgs ) => {
     return json({post:null, html:''});
   }
   const post = await getPost(params.slug);
-  invariant(post, `Post not found: ${params.slug}`);
+  if (!post) {
+    throw json({message: `Post "${params.slug}" does not exist.`}, { status: 404, statusText: 'Not Found' });
+  }
   const html = marked(post.markdown);
   return json({post, html});
 }
@@ -151,4 +153,26 @@ export default function NewPost() {
       </p>
     </Form>
   );
+}
+
+export function ErrorBoundary() {
+  let errorMessage = "Unknown Error";
+  const error = useRouteError();
+
+  if(isRouteErrorResponse(error)) {
+    errorMessage = error.data.message;
+  } else if (error instanceof Error) {
+    errorMessage = error.message
+  } else if (typeof error === "string") {
+    errorMessage = error;
+  }
+
+  return (
+    <>
+      <h2 className="text-red-500">Uh oh, something went wrong!</h2>
+      <p>
+        {errorMessage}
+      </p>
+    </>
+  )
 }
